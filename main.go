@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Database successfully connected")
+	fmt.Println("Database successfully connected")
 	addedProduct, err := createProduct(Product{0, "Go505", 500})
 	if err != nil {
 		log.Fatal("Error at adding stage")
@@ -47,30 +47,86 @@ func main() {
 		log.Fatal("Error at reading stage")
 		log.Fatal(err)
 	}
-	fmt.Print(p1)
+	fmt.Println(p1)
+	up, err := updateProduct(5, Product{0, "Go555", 555})
+	if err != nil {
+		log.Fatal("Error at updating stage")
+		log.Fatal(err)
+	}
+	fmt.Println(up)
+	del, err := deleteProduct(13)
+	if err != nil {
+		log.Fatal("Error at deleting stage")
+		log.Fatal(err)
+	}
+	fmt.Println(del)
+	arr, err := readProducts()
+	if err != nil {
+		log.Fatal("Error at read all stage")
+		log.Fatal(err)
+	}
+	fmt.Println("Read all")
+	fmt.Println(arr)
 }
 
 func createProduct(p Product) (product Product, err error) {
 	var newProduct Product
-	errors := db.QueryRow(`
+	err = db.QueryRow(`
 		INSERT INTO public.products(name, price) VALUES ($1, $2) RETURNING *;
 		`, p.Name, p.Price).Scan(&newProduct.ID, &newProduct.Name, &newProduct.Price)
-	if errors != nil {
-		return Product{}, errors
+	if err != nil {
+		return Product{}, err
 	}
 	return newProduct, nil
 }
 func readProduct(id int) (product Product, err error) {
-	errors := db.QueryRow(`
+	err = db.QueryRow(`
 		SELECT * FROM public.products WHERE id=$1;
 		`, id).Scan(&product.ID, &product.Name, &product.Price)
-	if errors != nil {
-		return Product{}, errors
+	if err != nil {
+		return Product{}, err
 	}
 	return product, nil
 }
 
 func updateProduct(id int, p Product) (updated Product, err error) {
-
+	err = db.QueryRow(`
+		UPDATE public.products
+		SET name=$1, price=$2
+		WHERE id=$3 RETURNING *;
+		`, p.Name, p.Price, id).Scan(&updated.ID, &updated.Name, &updated.Price)
+	if err != nil {
+		return Product{}, err
+	}
 	return updated, nil
+}
+func deleteProduct(id int) (deleted Product, err error) {
+	err = db.QueryRow(`
+		DELETE FROM public.products
+		WHERE id=$1 RETURNING *;
+		`, id).Scan(&deleted.ID, &deleted.Name, &deleted.Price)
+	if err != nil {
+		return Product{}, err
+	}
+	return deleted, nil
+}
+func readProducts() ([]Product, error) {
+	rows, err := db.Query(`SELECT * FROM public.products;`)
+	if err != nil {
+		return nil, err
+	}
+	var products []Product
+	defer rows.Close()
+	for rows.Next() {
+		var p Product
+		err := rows.Scan(&p.ID, &p.Name, &p.Price)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return products, err
 }
