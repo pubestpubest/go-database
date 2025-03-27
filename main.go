@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	_ "github.com/lib/pq"
 )
 
@@ -24,18 +25,27 @@ type Product struct {
 	Price int
 }
 
-func main() {
+func setupDataabse() *sql.DB {
 	psqlinfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, username, password, dbname)
-	sdb, err := sql.Open("postgres", psqlinfo)
+	db, err := sql.Open("postgres", psqlinfo)
 	if err != nil {
 		log.Fatal(err)
 	}
-	db = sdb
-	err = sdb.Ping()
+	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Database successfully connected")
+	return db
+}
+
+func main() {
+
+	app := fiber.New()
+	db = setupDataabse()
+	defer db.Close()
+	app.Listen(":3000")
+
 	addedProduct, err := createProduct(Product{0, "Go505", 500})
 	if err != nil {
 		log.Fatal("Error at adding stage")
